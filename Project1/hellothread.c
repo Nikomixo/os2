@@ -13,7 +13,7 @@ void *run(void *arg)
     return NULL;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
     pthread_t t1;
     pthread_t t2;
