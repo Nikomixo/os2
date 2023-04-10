@@ -4,12 +4,15 @@
 #include <pthread.h>
 
 // These will be initialized in main() from the command line.
+int is_free();
+
 int seat_count;
 int broker_count;
-int *seat_taken;  // Array of seats
+int *seat_taken; // Array of seats
 int transaction_count;
 
 int seat_taken_count = 0;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 int reserve_seat(int n)
 {
@@ -20,10 +23,19 @@ int reserve_seat(int n)
     //
     // This function should also increment seat_taken_count if the seat
     // wasn't already taken.
-    
-    // TODO
 
-    return 0;  // Change as necessary--included so it will build
+    int res = -1;
+
+    pthread_mutex_lock(&lock);
+    if (is_free(n))
+    {
+        seat_taken[n] = 1;
+        seat_taken_count += 1;
+        res = 0;
+    }
+    pthread_mutex_unlock(&lock);
+
+    return res; // Change as necessary--included so it will build
 }
 
 int free_seat(int n)
@@ -36,20 +48,29 @@ int free_seat(int n)
     // This function should also decrement seat_taken_count if the seat
     // wasn't already free.
 
-    // TODO
+    int res = -1;
 
-    return 0;  // Change as necessary--included so it will build
+    pthread_mutex_lock(&lock);
+    // printf("%d(%d) is free: %d\n", n, seat_taken[n], is_free(n));
+    if (!is_free(n))
+    {
+        seat_taken[n] = 0;
+        seat_taken_count -= 1;
+        res = 0;
+    }
+    pthread_mutex_unlock(&lock);
+
+    return res; // Change as necessary--included so it will build
 }
 
-int is_free(int n) {
+int is_free(int n)
+{
     // Returns true if the given seat is available.
-
-    // TODO
-
-    return 0;  // Change as necessary--included so it will build
+    return !seat_taken[n]; // Change as necessary--included so it will build
 }
 
-int verify_seat_count(void) {
+int verify_seat_count(void)
+{
     // This function counts all the taken seats in the seat_taken[]
     // array.
     //
@@ -61,14 +82,18 @@ int verify_seat_count(void) {
     // still work properly.
 
     int count = 0;
+    int res;
 
     // Count all the taken seats
+    pthread_mutex_lock(&lock);
     for (int i = 0; i < seat_count; i++)
         if (seat_taken[i])
             count++;
+    res = count == seat_taken_count;
+    pthread_mutex_unlock(&lock);
 
     // Return true if it's the same as seat_taken_count
-    return count == seat_taken_count;
+    return res;
 }
 
 // ------------------- DO NOT MODIFY PAST THIS LINE -------------------
@@ -77,20 +102,25 @@ void *seat_broker(void *arg)
 {
     int *id = arg;
 
-    for (int i = 0; i < transaction_count; i++) {
+    for (int i = 0; i < transaction_count; i++)
+    {
         int seat = rand() % seat_count;
-        if (rand() & 1) {
+        if (rand() & 1)
+        {
             // buy a random seat
             reserve_seat(seat);
-
-        } else {
+        }
+        else
+        {
             // sell a random seat
             free_seat(seat);
         }
 
-        if (!verify_seat_count()) {
-            printf("Broker %d: the seat count seems to be off! " \
-                   "I quit!\n", *id);
+        if (!verify_seat_count())
+        {
+            printf("Broker %d: the seat count seems to be off! "
+                   "I quit!\n",
+                   *id);
             return NULL;
         }
     }
@@ -103,7 +133,8 @@ void *seat_broker(void *arg)
 int main(int argc, char *argv[])
 {
     // Parse command line
-    if (argc != 4) {
+    if (argc != 4)
+    {
         fprintf(stderr, "usage: reservations seat_count broker_count xaction_count\n");
         exit(1);
     }
@@ -122,9 +153,10 @@ int main(int argc, char *argv[])
     int *thread_id = calloc(broker_count, sizeof *thread_id);
 
     srand(time(NULL) + getpid());
-    
+
     // Launch all brokers
-    for (int i = 0; i < broker_count; i++) {
+    for (int i = 0; i < broker_count; i++)
+    {
         thread_id[i] = i;
         pthread_create(thread + i, NULL, seat_broker, thread_id + i);
     }
@@ -133,4 +165,3 @@ int main(int argc, char *argv[])
     for (int i = 0; i < broker_count; i++)
         pthread_join(thread[i], NULL);
 }
-
