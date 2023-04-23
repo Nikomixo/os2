@@ -4,7 +4,7 @@
 #include <pthread.h>
 
 // These will be initialized in main() from the command line.
-int is_free();
+int is_free(int n);
 
 int seat_count;
 int broker_count;
